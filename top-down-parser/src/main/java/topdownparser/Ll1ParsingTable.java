@@ -36,8 +36,92 @@ public final class Ll1ParsingTable {
 
   /** Constructs the complete table, including conflicting cells when they exist. */
   public static Ll1ParsingTable build(final Grammar grammar) {
-    // TODO: Complete this method
-    return null; // TODO: replace the return value.
+    final Map<String, Set<String>> first = initialSets(grammar);
+
+    boolean changed;
+    
+    do {
+      changed = false;
+
+      for (final Production production : grammar.getProductions()) {
+        final String left = production.getLeftHandSide();
+        final List<String> right = production.getRightHandSide();
+
+        final Set<String> rightFirst =
+            firstOfSequence(right, grammar, first);
+
+        if (first.get(left).addAll(rightFirst)) {
+          changed = true;
+        }
+      }
+    } while (changed);
+
+    final Map<String, Set<String>> follow = initialSets(grammar);
+    follow.get(grammar.getStartSymbol()).add(Grammar.END_MARKER);
+
+    do {
+      changed = false;
+
+      for (final Production production : grammar.getProductions()) {
+        final String left = production.getLeftHandSide();
+        final List<String> right = production.getRightHandSide();
+
+        for (int i = 0; i < right.size(); i++) {
+          final String symbol = right.get(i);
+
+          if (!grammar.getNonterminals().contains(symbol)) {
+            continue;
+          }
+
+          final List<String> followingSymbols =
+              right.subList(i + 1, right.size());
+
+          final Set<String> followingFirst =
+              firstOfSequence(followingSymbols, grammar, first);
+
+          if (addWithoutEpsilon(follow.get(symbol), followingFirst)) {
+            changed = true;
+          }
+
+          if (followingFirst.contains(Grammar.EPSILON)) {
+            if (follow.get(symbol).addAll(follow.get(left))) {
+              changed = true;
+            }
+          }
+        }
+      }
+    } while (changed);
+
+    final Map<String, Map<String, List<Production>>> cells =
+        new LinkedHashMap<String, Map<String, List<Production>>>();
+    
+    for (final String nonterminal : grammar.getNonterminals()) {
+      cells.put(
+          nonterminal,
+          new LinkedHashMap<String, List<Production>>());
+    }
+  
+    for (final Production production : grammar.getProductions()) {
+      final String left = production.getLeftHandSide();
+      final List<String> right = production.getRightHandSide();
+    
+      final Set<String> rightFirst =
+          firstOfSequence(right, grammar, first);
+    
+      final Set<String> terminals = new LinkedHashSet<String>();
+    
+      addWithoutEpsilon(terminals, rightFirst);
+    
+      if (rightFirst.contains(Grammar.EPSILON)) {
+        terminals.addAll(follow.get(left));
+      }
+    
+      for (final String terminal : terminals) {
+        add(cells, left, terminal, production);
+      }
+    }
+  
+    return new Ll1ParsingTable(grammar, first, follow, cells);
   }
 
   public Grammar getGrammar() {
