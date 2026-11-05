@@ -137,7 +137,6 @@ public class SymbolTableBuilder {
 
     @Override
     public boolean visit(final MethodDeclaration node) {
-      // Each method starts with the class fields, without another method's locals.
       final Map<String, ASTNode> fields = this.nameMap;
       this.nameMap = new HashMap<>(fields);
       this.localNames.clear();
@@ -165,7 +164,6 @@ public class SymbolTableBuilder {
     @Override
     public boolean visit(final MethodInvocation node) {
       final Expression qualifier = node.getExpression();
-      // Qualified library calls are resolved later, when argument types are known.
       if (qualifier == null || qualifier.toString().equals(this.className)) {
         final String name = node.getName().getIdentifier();
         final MethodDeclaration declaration = this.methodMap.get(name);
@@ -244,7 +242,6 @@ public class SymbolTableBuilder {
       this.nameMap.clear();
       this.methodMap.clear();
       this.localNames.clear();
-      // The public class contains the program; other classes describe object data.
       if (!hasPublicModifier(node.modifiers())) {
         if (this.classMap.containsKey(this.className)) {
           throw new Error(node, "Duplicate class: " + this.className);
@@ -254,7 +251,6 @@ public class SymbolTableBuilder {
       for (final FieldDeclaration field : node.getFields()) {
         field.accept(this);
       }
-      // Register every method before visiting bodies, allowing forward calls/recursion.
       for (final MethodDeclaration method : node.getMethods()) {
         final String name = method.getName().getIdentifier();
         if (this.methodMap.containsKey(name)) {
